@@ -1,0 +1,12 @@
+{
+  "name": "pc-temp-monitor",
+  "version": "1.0.0",
+  "description": "Real-time PC temperature monitor dashboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

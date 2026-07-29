@@ -55,8 +55,7 @@ if (-not $nodeExe) {
 Write-Host "[2/5] Creating directory..." -ForegroundColor Cyan
 $docsFolder = [Environment]::GetFolderPath('MyDocuments')
 $monspecDir = Join-Path $docsFolder "MonSpec"
-$publicDir = Join-Path $monspecDir "public"
-New-Item -ItemType Directory -Path $publicDir -Force | Out-Null
+New-Item -ItemType Directory -Path $monspecDir -Force | Out-Null
 Set-Location $monspecDir
 Write-Host "✓ $monspecDir`n" -ForegroundColor Green
 

@@ -136,6 +136,20 @@ Write-Host "✓ Dependencies installed`n" -ForegroundColor Green
 
 # Cleanup and start
 Write-Host "[5/5] Launching server..." -ForegroundColor Cyan
+
+# Configure firewall to allow port 3000
+Write-Host "  Configuring firewall..." -ForegroundColor Yellow
+try {
+    $rule = Get-NetFirewallRule -DisplayName "MonSpec Port 3000" -ErrorAction SilentlyContinue
+    if ($rule) {
+        Remove-NetFirewallRule -DisplayName "MonSpec Port 3000" -Force -ErrorAction SilentlyContinue
+    }
+    New-NetFirewallRule -DisplayName "MonSpec Port 3000" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 3000 -ErrorAction SilentlyContinue | Out-Null
+    Write-Host "  ✓ Firewall rule added" -ForegroundColor Green
+} catch {
+    Write-Host "  ⚠ Firewall setup skipped" -ForegroundColor Yellow
+}
+
 Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
 Write-Host "`n✨ Starting PC Temp Monitor`n" -ForegroundColor Green

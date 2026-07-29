@@ -77,12 +77,50 @@ try {
     Write-Host "  ✓ server.js" -ForegroundColor Green
 } catch { Write-Host "  ✗ Failed to download server.js" -ForegroundColor Red; exit 1 }
 
-# Create Libre folder and download DLL
+# Create Libre folder and download all DLLs
 New-Item -ItemType Directory -Path "Libre" -Force | Out-Null
-try {
-    Invoke-WebRequest -Uri "$gitHub/Libre/LibreHardwareMonitorLib.dll" -OutFile "Libre\LibreHardwareMonitorLib.dll" -UseBasicParsing
-    Write-Host "  ✓ LibreHardwareMonitorLib.dll" -ForegroundColor Green
-} catch { Write-Host "  ✗ Failed to download DLL (WMI fallback available)" -ForegroundColor Yellow }
+
+# Critical DLLs needed for LibreHardwareMonitorLib.dll to work
+$dlls = @(
+    "LibreHardwareMonitorLib.dll",
+    "System.Text.Json.dll",
+    "System.Threading.Tasks.Extensions.dll",
+    "System.Runtime.CompilerServices.Unsafe.dll",
+    "System.Buffers.dll",
+    "System.Memory.dll",
+    "System.Numerics.Vectors.dll",
+    "System.Collections.Immutable.dll",
+    "System.Reflection.Metadata.dll",
+    "System.IO.Pipelines.dll",
+    "System.Text.Encodings.Web.dll",
+    "System.Security.AccessControl.dll",
+    "System.Security.Principal.Windows.dll",
+    "System.Resources.Extensions.dll",
+    "System.Formats.Nrbf.dll",
+    "System.Threading.AccessControl.dll",
+    "System.CodeDom.dll",
+    "BlackSharp.Core.dll",
+    "DiskInfoToolkit.dll",
+    "HidSharp.dll",
+    "Microsoft.Bcl.AsyncInterfaces.dll",
+    "Microsoft.Bcl.HashCode.dll",
+    "Microsoft.Win32.TaskScheduler.dll",
+    "RAMSPDToolkit-NDD.dll"
+)
+
+$dllCount = 0
+foreach ($dll in $dlls) {
+    try {
+        Invoke-WebRequest -Uri "$gitHub/Libre/$dll" -OutFile "Libre\$dll" -UseBasicParsing -ErrorAction SilentlyContinue
+        $dllCount++
+    } catch { }
+}
+
+if ($dllCount -gt 0) {
+    Write-Host "  ✓ Downloaded $dllCount library files" -ForegroundColor Green
+} else {
+    Write-Host "  ✗ Failed to download libraries (WMI fallback available)" -ForegroundColor Yellow
+}
 
 Write-Host ""
 

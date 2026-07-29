@@ -19,7 +19,12 @@ app.use(express.static(path.join(__dirname, 'public')));
 const DLL_PATH = path.join(__dirname, 'Libre', 'LibreHardwareMonitorLib.dll');
 
 // PowerShell script to collect temps
-const PS_SCRIPT = (dllPath) => `
+const PS_SCRIPT = (dllPath) => {
+  const dllDir = path.dirname(dllPath).replace(/\\/g, '\\\\');
+  return `
+$dllDir = "${dllDir}"
+[System.Reflection.Assembly]::LoadFrom("$dllDir") | Out-Null
+
 $ErrorActionPreference = "SilentlyContinue"
 $DebugPreference = "SilentlyContinue"
 $method = "none"
@@ -39,8 +44,9 @@ $gpu = [ordered]@{
 
 # Try DLL
 try {
-  if (Test-Path "${dllPath}") {
-    Add-Type -Path "${dllPath}" -ErrorAction Stop
+  $dllPath = "$dllDir\\LibreHardwareMonitorLib.dll"
+  if (Test-Path $dllPath) {
+    Add-Type -Path $dllPath -ErrorAction Stop
     $comp = New-Object LibreHardwareMonitor.Hardware.Computer
     $comp.IsCpuEnabled = $true
     $comp.IsGpuEnabled = $true
@@ -113,6 +119,7 @@ $cpu.clocks = @($cpu.clocks | Sort-Object core)
 
 [ordered]@{ cpu=$cpu; gpu=$gpu; method=$method } | ConvertTo-Json -Depth 6 -Compress
 `;
+};
 
 function runPS(script) {
   return new Promise((resolve) => {

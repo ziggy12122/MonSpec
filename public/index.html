@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Temps">
+  <meta name="theme-color" content="#09090f">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <title>Temps</title>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      overscroll-behavior: none;
+      font-family: 'Geist', sans-serif;
+      background: #09090f;
+      color: #fff;
+    }
+
+    /* safe areas */
+    .pt-safe { padding-top: max(16px, env(safe-area-inset-top)); }
+    .pb-safe { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+
+    /* ── animations ─────────────────────────────── */
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(10px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    .fu  { animation: fadeUp .35s ease-out forwards; opacity:0; }
+    .d1  { animation-delay: .05s; }
+    .d2  { animation-delay: .12s; }
+    .d3  { animation-delay: .19s; }
+
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.15} }
+    .blink { animation: blink 1.5s infinite; }
+
+    @keyframes numPop {
+      0%   { opacity:1; }
+      20%  { opacity:.2; transform:scale(.94); }
+      100% { opacity:1; transform:scale(1); }
+    }
+    .pop { animation: numPop .22s ease-out; }
+
+    /* ── surfaces ───────────────────────────────── */
+    .card {
+      background: rgba(255,255,255,.055);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 20px;
+    }
+    .pill {
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 10px;
+    }
+    .inset {
+      background: rgba(0,0,0,.25);
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: 8px;
+    }
+    .chip {
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.09);
+      border-radius: 8px;
+      padding: 5px 9px;
+      font-size: 11px;
+      color: rgba(255,255,255,.65);
+    }
+
+    /* ── temp colour tokens ─────────────────────── */
+    :root {
+      --c-ok:   #34d399;   /* ≤60   */
+      --c-warm: #fbbf24;   /* 61-75 */
+      --c-hot:  #f97316;   /* 76-90 */
+      --c-crit: #f87171;   /* >90   */
+      --c-load-lo: #60a5fa;   /* ≤40  */
+      --c-load-md: #a78bfa;   /* ≤70  */
+      --c-load-hi: #f97316;   /* ≤90  */
+      --c-load-mx: #f87171;   /* >90  */
+    }
+
+    /* text colours */
+    .t-ok   { color: var(--c-ok);   }
+    .t-warm { color: var(--c-warm); }
+    .t-hot  { color: var(--c-hot);  }
+    .t-crit { color: var(--c-crit); }
+
+    /* bar fills */
+    .b-ok   { background: linear-gradient(90deg,#059669,var(--c-ok));   box-shadow:0 0 8px #34d39940; }
+    .b-warm { background: linear-gradient(90deg,#d97706,var(--c-warm)); box-shadow:0 0 8px #fbbf2440; }
+    .b-hot  { background: linear-gradient(90deg,#c2410c,var(--c-hot));  box-shadow:0 0 8px #f9731640; }
+    .b-crit { background: linear-gradient(90deg,#b91c1c,var(--c-crit)); box-shadow:0 0 8px #f8717140; }
+
+    /* load colours */
+    .l-lo { color: var(--c-load-lo); }
+    .l-md { color: var(--c-load-md); }
+    .l-hi { color: var(--c-load-hi); }
+    .l-mx { color: var(--c-load-mx); }
+
+    .lb-lo { background: linear-gradient(90deg,#1d4ed8,var(--c-load-lo)); }
+    .lb-md { background: linear-gradient(90deg,#5b21b6,var(--c-load-md)); }
+    .lb-hi { background: linear-gradient(90deg,#c2410c,var(--c-load-hi)); }
+    .lb-mx { background: linear-gradient(90deg,#b91c1c,var(--c-load-mx)); }
+
+    /* ── bar track ──────────────────────────────── */
+    .track {
+      height: 5px;
+      border-radius: 99px;
+      background: rgba(255,255,255,.08);
+      overflow: hidden;
+    }
+    .track-sm {
+      height: 3px;
+      border-radius: 99px;
+      background: rgba(255,255,255,.07);
+      overflow: hidden;
+    }
+    .bar {
+      height: 100%;
+      border-radius: 99px;
+      transition: width .65s cubic-bezier(.4,0,.2,1),
+                  background .4s ease,
+                  box-shadow .4s ease;
+    }
+
+    /* ── scroll ─────────────────────────────────── */
+    .scrolly { overflow-y: auto; }
+    .scrolly::-webkit-scrollbar { width: 2px; }
+    .scrolly::-webkit-scrollbar-thumb { background:rgba(255,255,255,.15); border-radius:99px; }
+
+    /* ── legend dots ─────────────────────────────── */
+    .ldot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+
+    /* typography helpers */
+    .dim  { color: rgba(255,255,255,.35); }
+    .mid  { color: rgba(255,255,255,.60); }
+    .lit  { color: rgba(255,255,255,.90); }
+  </style>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- deep space bg -->
+  <div class="fixed inset-0 -z-10"
+       style="background: radial-gradient(ellipse 80% 60% at 10% 10%, #1a0a3a 0%, #09090f 65%)"></div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       APP SHELL
+  ══════════════════════════════════════════════════════════════════ -->
+  <div class="flex flex-col gap-4 px-4 pt-safe pb-safe max-w-sm mx-auto">
+
+    <!-- ── setup banner (if not connected) ───────────────────────── -->
+    <div id="setup-banner" class="rounded-2xl px-4 py-3 fu d1"
+         style="background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.28);color:#93c5fd;">
+      <div class="text-xs font-semibold mb-2">Backend not running</div>
+      <div class="text-xs dim mb-2.5">Open PowerShell as Admin and run:</div>
+      <div class="bg-black bg-opacity-40 rounded-lg px-2.5 py-2 font-mono text-xs overflow-x-auto mb-2.5"
+           style="white-space:nowrap;">
+        irm https://raw.githubusercontent.com/ziggy12122/MonSpec/main/install.ps1 | iex
+      </div>
+      <button id="copy-btn" class="text-xs bg-blue-600 hover:bg-blue-700 px-2.5 py-1.5 rounded transition"
+              style="width:100%;">Copy Command</button>
+    </div>
+
+    <!-- ── status bar ──────────────────────────────────────────── -->
+    <div class="flex items-center justify-between pt-2 fu d1">
+      <div class="flex items-center gap-2">
+        <span id="status-dot" class="w-2 h-2 rounded-full bg-yellow-400 blink"></span>
+        <span id="status-text" class="text-xs dim">connecting</span>
+      </div>
+      <span id="last-updated" class="text-xs dim tabular-nums"></span>
+    </div>
+
+    <!-- error -->
+    <div id="error-banner" class="hidden rounded-2xl px-4 py-3 text-xs"
+         style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.28);color:#fca5a5;"></div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         CPU CARD
+    ══════════════════════════════════════════════════════════════ -->
+    <div class="card p-4 fu d1 flex flex-col gap-0">
+
+      <!-- card header -->
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2">
+          <i data-lucide="cpu" class="w-3.5 h-3.5 dim"></i>
+          <span id="cpu-name" class="text-xs mid truncate" style="max-width:160px">CPU</span>
+        </div>
+        <!-- legend -->
+        <div class="flex items-center gap-2.5">
+          <span class="ldot" style="background:var(--c-ok)"></span>
+          <span class="ldot" style="background:var(--c-warm)"></span>
+          <span class="ldot" style="background:var(--c-hot)"></span>
+          <span class="ldot" style="background:var(--c-crit)"></span>
+        </div>
+      </div>
+
+      <!-- package hero label -->
+      <div class="flex items-center gap-2 mb-1.5">
+        <span class="text-xs dim uppercase tracking-widest" style="font-size:10px">Package Temp</span>
+      </div>
+
+      <!-- ── package hero ─────────────────────── -->
+      <div class="flex items-end justify-between mb-2">
+        <div class="flex items-end gap-1.5">
+          <span id="cpu-pkg-val"
+                class="t-ok leading-none font-semibold tabular-nums"
+                style="font-size:clamp(52px,14vw,68px)">--</span>
+          <span class="text-2xl font-light dim mb-1">°C</span>
+        </div>
+        <div class="flex flex-col items-end gap-1 mb-1">
+          <span id="cpu-pkg-max" class="text-xs dim tabular-nums"></span>
+          <span id="cpu-load-val" class="text-xs font-semibold tabular-nums l-lo">--%</span>
+        </div>
+      </div>
+
+      <!-- temp bar -->
+      <div class="track mb-1.5">
+        <div id="cpu-pkg-bar" class="bar b-ok" style="width:0%"></div>
+      </div>
+      <!-- load bar -->
+      <div class="track-sm mb-4">
+        <div id="cpu-load-bar" class="bar lb-lo" style="width:0%"></div>
+      </div>
+
+      <!-- power chips -->
+      <div id="cpu-power-wrap" class="hidden flex-wrap gap-1.5 mb-4" style="display:none"></div>
+
+      <!-- ── divider + cores title ─────────────── -->
+      <div class="flex items-center gap-2 mb-3">
+        <div class="flex-1" style="border-top:1px solid rgba(255,255,255,.07)"></div>
+        <span class="text-xs dim uppercase tracking-widest" style="font-size:10px">Cores</span>
+        <div class="flex-1" style="border-top:1px solid rgba(255,255,255,.07)"></div>
+      </div>
+
+      <!-- ── core grid ─────────────────────────── -->
+      <div id="cpu-cores-grid"
+           class="grid gap-2 scrolly"
+           style="grid-template-columns:repeat(auto-fill,minmax(80px,1fr));max-height:44vh">
+        <p id="cores-ph" class="dim text-xs" style="grid-column:1/-1">waiting…</p>
+      </div>
+
+      <!-- ── clocks ────────────────────────────── -->
+      <div id="cpu-clocks-wrap" class="hidden">
+        <div class="flex items-center gap-2 mt-3 mb-2">
+          <div class="flex-1" style="border-top:1px solid rgba(255,255,255,.06)"></div>
+          <span class="text-xs dim uppercase tracking-widest" style="font-size:10px">Clocks</span>
+          <div class="flex-1" style="border-top:1px solid rgba(255,255,255,.06)"></div>
+        </div>
+        <div id="cpu-clocks-grid"
+             class="grid gap-1.5"
+             style="grid-template-columns:repeat(auto-fill,minmax(72px,1fr))">
+        </div>
+      </div>
+
+    </div><!-- /CPU card -->
+
+    <!-- ══════════════════════════════════════════════════════════
+         GPU CARD
+    ══════════════════════════════════════════════════════════════ -->
+    <div class="card p-4 fu d2 flex flex-col gap-0">
+
+      <!-- card header -->
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2">
+          <i data-lucide="monitor" class="w-3.5 h-3.5 dim"></i>
+          <span id="gpu-name" class="text-xs mid truncate" style="max-width:160px">GPU</span>
+        </div>
+        <div class="flex items-center gap-2.5">
+          <span class="ldot" style="background:var(--c-ok)"></span>
+          <span class="ldot" style="background:var(--c-warm)"></span>
+          <span class="ldot" style="background:var(--c-hot)"></span>
+          <span class="ldot" style="background:var(--c-crit)"></span>
+        </div>
+      </div>
+
+      <!-- core temp label -->
+      <div class="flex items-center gap-2 mb-1.5">
+        <span class="dim uppercase tracking-widest" style="font-size:10px">Core Temp</span>
+      </div>
+
+      <!-- hero temp -->
+      <div class="flex items-end justify-between mb-2">
+        <div class="flex items-end gap-1.5">
+          <span id="gpu-core-val"
+                class="t-ok leading-none font-semibold tabular-nums"
+                style="font-size:clamp(52px,14vw,68px)">--</span>
+          <span class="text-2xl font-light dim mb-1">°C</span>
+        </div>
+        <div class="flex flex-col items-end gap-1 mb-1">
+          <span id="gpu-core-max" class="text-xs dim tabular-nums"></span>
+          <span id="gpu-load-val" class="text-xs font-semibold tabular-nums l-lo">--%</span>
+        </div>
+      </div>
+
+      <!-- temp bar -->
+      <div class="track mb-1.5">
+        <div id="gpu-core-bar" class="bar b-ok" style="width:0%"></div>
+      </div>
+      <!-- load bar -->
+      <div class="track-sm mb-4">
+        <div id="gpu-load-bar" class="bar lb-lo" style="width:0%"></div>
+      </div>
+
+      <!-- power chips -->
+      <div id="gpu-power-wrap" class="flex-wrap gap-1.5 mb-4" style="display:none"></div>
+
+      <!-- ── temps section ─────────────────────── -->
+      <div id="gpu-temps-section" class="hidden">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="flex-1" style="border-top:1px solid rgba(255,255,255,.07)"></div>
+          <span class="dim uppercase tracking-widest" style="font-size:10px">Temps</span>
+          <div class="flex-1" style="border-top:1px solid rgba(255,255,255,.07)"></div>
+        </div>
+        <div id="gpu-temps-grid" class="grid gap-2"
+             style="grid-template-columns:repeat(auto-fill,minmax(80px,1fr))"></div>
+      </div>
+
+      <!-- ── loads section ─────────────────────── -->
+      <div id="gpu-loads-section" class="hidden">
+        <div class="flex items-center gap-2 mb-3 mt-3">
+          <div class="flex-1" style="border-top:1px solid rgba(255,255,255,.07)"></div>
+          <span class="dim uppercase tracking-widest" style="font-size:10px">Load</span>
+          <div class="flex-1" style="border-top:1px solid rgba(255,255,255,.07)"></div>
+        </div>
+        <div id="gpu-loads-grid" class="grid gap-2"
+             style="grid-template-columns:repeat(auto-fill,minmax(80px,1fr))"></div>
+      </div>
+
+      <!-- ── other sensors (power, fans, clocks, voltage) ─────── -->
+      <div id="gpu-other-section" class="hidden">
+        <div class="flex items-center gap-2 mb-3 mt-3">
+          <div class="flex-1" style="border-top:1px solid rgba(255,255,255,.06)"></div>
+          <span class="dim uppercase tracking-widest" style="font-size:10px">Info</span>
+          <div class="flex-1" style="border-top:1px solid rgba(255,255,255,.06)"></div>
+        </div>
+        <div id="gpu-other-grid" class="grid gap-1.5"
+             style="grid-template-columns:repeat(auto-fill,minmax(80px,1fr))"></div>
+      </div>
+
+    </div><!-- /GPU card -->
+
+    <!-- bottom spacer for PWA home-indicator -->
+    <div class="h-2"></div>
+
+  </div><!-- /shell -->
+
+  <script>
+    lucide.createIcons();
+
+    /* ── colour system ─────────────────────────────────────────── */
+    const TLVL = [
+      { max:60,  tc:'t-ok',   bc:'b-ok'   },
+      { max:75,  tc:'t-warm', bc:'b-warm' },
+      { max:90,  tc:'t-hot',  bc:'b-hot'  },
+      { max:1e9, tc:'t-crit', bc:'b-crit' },
+    ];
+    const LLVL = [
+      { max:40,  tc:'l-lo', bc:'lb-lo' },
+      { max:70,  tc:'l-md', bc:'lb-md' },
+      { max:90,  tc:'l-hi', bc:'lb-hi' },
+      { max:1e9, tc:'l-mx', bc:'lb-mx' },
+    ];
+
+    const lvlT = t  => TLVL.find(l => (t??-1) <= l.max) ?? TLVL.at(-1);
+    const lvlL = lo => LLVL.find(l => (lo??-1) <= l.max) ?? LLVL.at(-1);
+
+    const ALL_TC = TLVL.map(l=>l.tc);
+    const ALL_BC = TLVL.map(l=>l.bc);
+    const ALL_LC = LLVL.map(l=>l.tc);
+    const ALL_LB = LLVL.map(l=>l.bc);
+
+    function swapClass(el, add, remove) {
+      remove.forEach(c => el.classList.remove(c));
+      el.classList.add(add);
+    }
+
+    function applyTemp(textEl, barEl, t, barMax=100) {
+      const lv = lvlT(t);
+      swapClass(textEl, lv.tc, [...ALL_TC,...ALL_LC,'lit','mid','dim']);
+      if (barEl) {
+        swapClass(barEl, lv.bc, ALL_BC);
+        barEl.style.width = t!=null ? Math.min(100,(t/barMax)*100)+'%' : '0%';
+      }
+    }
+
+    function applyLoad(textEl, barEl, lo) {
+      const lv = lvlL(lo);
+      swapClass(textEl, lv.tc, [...ALL_TC,...ALL_LC,'lit','mid','dim']);
+      if (barEl) {
+        swapClass(barEl, lv.bc, ALL_LB);
+        barEl.style.width = lo!=null ? Math.min(100,lo)+'%' : '0%';
+      }
+    }
+
+    function pop(el) {
+      el.classList.remove('pop');
+      void el.offsetWidth;
+      el.classList.add('pop');
+    }
+
+    function setNum(el, val, fmt) {
+      const str = fmt(val);
+      if (el.textContent !== str) { el.textContent = str; pop(el); }
+    }
+
+    /* ── DOM refs ──────────────────────────────────────────────── */
+    const g = id => document.getElementById(id);
+    const statusDot    = g('status-dot');
+    const statusText   = g('status-text');
+    const errorBanner  = g('error-banner');
+    const lastUpdEl    = g('last-updated');
+    const cpuNameEl    = g('cpu-name');
+    const cpuPkgVal    = g('cpu-pkg-val');
+    const cpuPkgMax    = g('cpu-pkg-max');
+    const cpuPkgBar    = g('cpu-pkg-bar');
+    const cpuLoadVal   = g('cpu-load-val');
+    const cpuLoadBar   = g('cpu-load-bar');
+    const cpuPowerWrap = g('cpu-power-wrap');
+    const cpuCoresGrid = g('cpu-cores-grid');
+    const cpuClocksWrap= g('cpu-clocks-wrap');
+    const cpuClocksGrid= g('cpu-clocks-grid');
+    const gpuNameEl    = g('gpu-name');
+    const gpuCoreVal   = g('gpu-core-val');
+    const gpuCoreMax   = g('gpu-core-max');
+    const gpuCoreBar   = g('gpu-core-bar');
+    const gpuLoadVal   = g('gpu-load-val');
+    const gpuLoadBar   = g('gpu-load-bar');
+    const gpuPowerWrap = g('gpu-power-wrap');
+    const gpuTempsGrid = g('gpu-temps-grid');
+    const gpuLoadsGrid = g('gpu-loads-grid');
+    const gpuOtherGrid = g('gpu-other-grid');
+
+    const coreCells  = {};
+    const gpuCells   = {};   // key → cell el refs
+
+    /* ── GPU sensor cell (matches core cell style) ─────────────── */
+    function getGpuCell(key, label, type, grid) {
+      if (gpuCells[key]) return gpuCells[key];
+
+      const isTemp = type === 'Temperature';
+      const isLoad = type === 'Load';
+
+      const el = document.createElement('div');
+      el.className = 'pill flex flex-col gap-1.5 p-2.5';
+      el.innerHTML = `
+        <div class="flex items-center justify-between">
+          <span class="dim truncate" style="font-size:10px;max-width:52px">${label}</span>
+          <span class="gv font-semibold tabular-nums leading-none ${isTemp?'t-ok':isLoad?'l-lo':'lit'}"
+                style="font-size:13px;white-space:nowrap">--</span>
+        </div>
+        ${isTemp||isLoad ? `<div class="track-sm"><div class="bar ${isLoad?'lb-lo':'b-ok'} gvb" style="width:0%"></div></div>` : ''}
+        ${isTemp ? `<span class="gmx dim tabular-nums" style="font-size:9px"></span>` : ''}
+      `;
+      grid.appendChild(el);
+      gpuCells[key] = {
+        v:  el.querySelector('.gv'),
+        b:  el.querySelector('.gvb'),
+        mx: el.querySelector('.gmx'),
+        type,
+      };
+      return gpuCells[key];
+    }
+    function getCore(num) {
+      if (coreCells[num]) return coreCells[num];
+      // remove placeholder
+      document.getElementById('cores-ph')?.remove();
+
+      const el = document.createElement('div');
+      el.className = 'pill flex flex-col gap-1.5 p-2.5';
+      el.innerHTML = `
+        <div class="flex items-center justify-between">
+          <span class="dim" style="font-size:10px">Core ${num}</span>
+          <span class="ct text-sm font-semibold tabular-nums t-ok leading-none">--°</span>
+        </div>
+        <div class="track-sm"><div class="bar b-ok ctb" style="width:0%"></div></div>
+        <div class="flex items-center gap-1.5 mt-0.5">
+          <div class="flex-1" style="height:2px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden">
+            <div class="bar lb-lo clb" style="width:0%;height:100%"></div>
+          </div>
+          <span class="cl tabular-nums l-lo" style="font-size:10px;min-width:28px;text-align:right">--%</span>
+        </div>`;
+      cpuCoresGrid.appendChild(el);
+      coreCells[num] = {
+        t:  el.querySelector('.ct'),
+        tb: el.querySelector('.ctb'),
+        l:  el.querySelector('.cl'),
+        lb: el.querySelector('.clb'),
+      };
+      return coreCells[num];
+    }
+
+    /* ── render ────────────────────────────────────────────────── */
+    function render(data) {
+      if (data.error) {
+        statusDot.className = 'w-2 h-2 rounded-full bg-red-400';
+        statusText.textContent = 'error';
+        errorBanner.classList.remove('hidden');
+        errorBanner.textContent = '⚠️ ' + data.error;
+        return;
+      }
+      g('setup-banner').classList.add('hidden');
+      errorBanner.classList.add('hidden');
+      statusDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+      statusText.textContent = 'live';
+      lastUpdEl.textContent = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});
+
+      const cpu = data.cpu || {};
+      const gpu = data.gpu || {};
+
+      /* CPU name */
+      if (cpu.name) cpuNameEl.textContent = cpu.name;
+
+      /* CPU package */
+      const pkgT  = cpu.package != null ? +cpu.package : null;
+      const pkgMx = cpu.packageMax != null ? +cpu.packageMax : null;
+      setNum(cpuPkgVal, pkgT,  t => t != null ? String(t) : '--');
+      applyTemp(cpuPkgVal, cpuPkgBar, pkgT);
+      cpuPkgMax.textContent = pkgMx != null ? `max ${pkgMx}°` : '';
+
+      /* CPU load */
+      const lo = cpu.load != null ? +cpu.load : null;
+      setNum(cpuLoadVal, lo, l => l != null ? l+'%' : '--%');
+      applyLoad(cpuLoadVal, cpuLoadBar, lo);
+
+      /* power chips */
+      const powers = Array.isArray(cpu.power) ? cpu.power : [];
+      if (powers.length) {
+        cpuPowerWrap.style.display = 'flex';
+        cpuPowerWrap.innerHTML = powers.map(p =>
+          `<span class="chip">${p.watt != null ? Math.round(p.watt)+'W' : '--'}</span>`
+        ).join('');
+      }
+
+      /* CPU cores */
+      const cores  = Array.isArray(cpu.cores)  ? cpu.cores  : [];
+      const loads  = Array.isArray(cpu.loads)  ? cpu.loads  : [];
+      const clocks = Array.isArray(cpu.clocks) ? cpu.clocks : [];
+      const lmap   = Object.fromEntries(loads.map(l  => [l.core,  l.load]));
+
+      for (const c of cores) {
+        const t  = c.temp != null ? +c.temp : null;
+        const l  = lmap[c.core] != null ? +lmap[c.core] : null;
+        const cl = getCore(c.core);
+
+        const td = t != null ? `${t}°` : '--°';
+        if (cl.t.textContent !== td) { cl.t.textContent = td; pop(cl.t); }
+        applyTemp(cl.t, cl.tb, t);
+
+        const ld = l != null ? l+'%' : '--%';
+        if (cl.l.textContent !== ld) { cl.l.textContent = ld; }
+        applyLoad(cl.l, cl.lb, l);
+      }
+
+      /* CPU clocks */
+      if (clocks.length) {
+        cpuClocksWrap.classList.remove('hidden');
+        cpuClocksGrid.innerHTML = clocks.map(c => {
+          const ghz = c.mhz != null ? (c.mhz/1000).toFixed(2) : '--';
+          const lbl = c.core >= 0 ? `#${c.core}` : (c.label || '');
+          return `<div class="pill flex flex-col items-center gap-0.5 py-1.5 px-2">
+            <span class="dim" style="font-size:10px">${lbl}</span>
+            <span class="lit" style="font-size:11px">${ghz}G</span>
+          </div>`;
+        }).join('');
+      }
+
+      /* GPU */
+      if (gpu.name) gpuNameEl.textContent = gpu.name;
+      const sensors = (Array.isArray(gpu.sensors) ? gpu.sensors : []).slice();
+
+      // Separate into hero (first temp = GPU Core), extra temps, loads, other
+      const temps  = sensors.filter(s => s.type === 'Temperature');
+      const loads  = sensors.filter(s => s.type === 'Load');
+      const others = sensors.filter(s => !['Temperature','Load'].includes(s.type));
+
+      // Hero = first temperature sensor (GPU Core)
+      const hero = temps[0] ?? null;
+      const extraTemps = temps.slice(1);
+
+      const heroT   = hero?.value != null ? +hero.value : null;
+      const heroMax = hero?.max   != null ? +hero.max   : null;
+      setNum(gpuCoreVal, heroT, t => t != null ? String(t) : '--');
+      applyTemp(gpuCoreVal, gpuCoreBar, heroT);
+      gpuCoreMax.textContent = heroMax != null ? `max ${heroMax}°` : '';
+
+      // GPU total load (look for "GPU Core" load first, else first load sensor)
+      const heroLoad = loads.find(s => /core/i.test(s.name)) ?? loads[0] ?? null;
+      const gpuLo = heroLoad?.value != null ? +heroLoad.value : null;
+      setNum(gpuLoadVal, gpuLo, l => l != null ? l+'%' : '--%');
+      applyLoad(gpuLoadVal, gpuLoadBar, gpuLo);
+
+      // GPU power chips (Power type sensors)
+      const gpuPowers = others.filter(s => s.type === 'Power');
+      if (gpuPowers.length) {
+        gpuPowerWrap.style.display = 'flex';
+        gpuPowerWrap.innerHTML = gpuPowers.map(p =>
+          `<span class="chip">${p.value != null ? Math.round(p.value)+'W' : '--'}</span>`
+        ).join('');
+      }
+
+      // Extra temp cells (hotspot, memory, etc.)
+      if (extraTemps.length) {
+        g('gpu-temps-section').classList.remove('hidden');
+        for (const s of extraTemps) {
+          const key  = 'T_' + s.name.replace(/\s+/g,'_');
+          const cell = getGpuCell(key, s.name, 'Temperature', gpuTempsGrid);
+          const t    = s.value != null ? +s.value : null;
+          const mx   = s.max   != null ? +s.max   : null;
+          const td   = t != null ? `${t}°` : '--°';
+          if (cell.v.textContent !== td) { cell.v.textContent = td; pop(cell.v); }
+          applyTemp(cell.v, cell.b, t);
+          if (cell.mx && mx != null) cell.mx.textContent = `max ${mx}°`;
+        }
+      }
+
+      // Load cells (skip hero load)
+      const extraLoads = loads.filter(s => s !== heroLoad);
+      if (extraLoads.length) {
+        g('gpu-loads-section').classList.remove('hidden');
+        for (const s of extraLoads) {
+          const key  = 'L_' + s.name.replace(/\s+/g,'_');
+          const cell = getGpuCell(key, s.name, 'Load', gpuLoadsGrid);
+          const l    = s.value != null ? +s.value : null;
+          const ld   = l != null ? `${l}%` : '--%';
+          if (cell.v.textContent !== ld) { cell.v.textContent = ld; pop(cell.v); }
+          applyLoad(cell.v, cell.b, l);
+        }
+      }
+
+      // Other sensors: fans, clocks, voltage, memory
+      const nonPowerOthers = others.filter(s => s.type !== 'Power');
+      if (nonPowerOthers.length) {
+        g('gpu-other-section').classList.remove('hidden');
+        for (const s of nonPowerOthers) {
+          const key  = 'O_' + s.type + '_' + s.name.replace(/\s+/g,'_');
+          const cell = getGpuCell(key, s.name, s.type, gpuOtherGrid);
+          const val  = s.value != null ? +s.value : null;
+          let disp = '--';
+          if (val != null) switch (s.type) {
+            case 'Fan':      disp = `${Math.round(val)} RPM`; break;
+            case 'Clock':    disp = `${(val/1000).toFixed(2)}G`; break;
+            case 'Voltage':  disp = `${val}V`; break;
+            case 'SmallData':
+            case 'Data':     disp = `${val}MB`; break;
+            default:         disp = String(val);
+          }
+          if (cell.v.textContent !== disp) { cell.v.textContent = disp; pop(cell.v); }
+          swapClass(cell.v, 'lit', [...ALL_TC,...ALL_LC,'mid','dim']);
+        }
+      }
+    }
+
+    /* ── SSE ───────────────────────────────────────────────────── */
+    let es, retry;
+    function connect() {
+      if (es) es.close();
+      statusDot.className = 'w-2 h-2 rounded-full bg-yellow-400 blink';
+      statusText.textContent = 'connecting';
+      es = new EventSource('/temps/stream');
+      es.onmessage = e => { try { render(JSON.parse(e.data)); } catch(err) { console.error(err); } };
+      es.onerror   = () => {
+        statusDot.className = 'w-2 h-2 rounded-full bg-red-500';
+        statusText.textContent = 'retrying';
+        g('setup-banner').classList.remove('hidden');
+        es.close();
+        clearTimeout(retry);
+        retry = setTimeout(connect, 4000);
+      };
+    }
+    connect();
+
+    /* ── copy button ──────────────────────────────────────────── */
+    g('copy-btn').addEventListener('click', () => {
+      const cmd = 'irm https://raw.githubusercontent.com/ziggy12122/MonSpec/main/install.ps1 | iex';
+      navigator.clipboard.writeText(cmd).then(() => {
+        const btn = g('copy-btn');
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        setTimeout(() => btn.textContent = orig, 2000);
+      });
+    });
+
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+  </script>
+</body>
+</html>

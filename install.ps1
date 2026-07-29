@@ -63,7 +63,7 @@ Write-Host "✓ $monspecDir`n" -ForegroundColor Green
 $gitHub = "https://raw.githubusercontent.com/ziggy12122/MonSpec/main"
 
 # Download backend from GitHub
-Write-Host "[3/5] Downloading backend..." -ForegroundColor Cyan
+Write-Host "[3/5] Downloading files..." -ForegroundColor Cyan
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
@@ -76,6 +76,15 @@ try {
     Invoke-WebRequest -Uri "$gitHub/server.js" -OutFile "server.js" -UseBasicParsing
     Write-Host "  ✓ server.js" -ForegroundColor Green
 } catch { Write-Host "  ✗ Failed to download server.js" -ForegroundColor Red; exit 1 }
+
+# Download frontend files
+New-Item -ItemType Directory -Path "public" -Force | Out-Null
+$frontendFiles = @("index.html", "manifest.json", "sw.js")
+foreach ($file in $frontendFiles) {
+    try {
+        Invoke-WebRequest -Uri "$gitHub/public/$file" -OutFile "public\$file" -UseBasicParsing
+    } catch { }
+}
 
 # Create Libre folder and download all DLLs
 New-Item -ItemType Directory -Path "Libre" -Force | Out-Null
@@ -153,8 +162,17 @@ try {
 Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
 Write-Host "`n✨ Starting PC Temp Monitor`n" -ForegroundColor Green
-Write-Host "  🌐 http://localhost:3000" -ForegroundColor Cyan
-Write-Host "  📱 http://<your-pc-ip>:3000 (from phone on same WiFi)`n" -ForegroundColor Cyan
-Write-Host "  Press Ctrl+C to stop`n" -ForegroundColor Yellow
+Write-Host "  🌐 Desktop: http://localhost:3000" -ForegroundColor Cyan
+Write-Host "  📱 Phone on same WiFi:`n" -ForegroundColor Cyan
+
+# Get local IP address
+try {
+    $ipAddr = (Get-NetIPAddress -AddressFamily IPv4 -Type Unicast | Where-Object { $_.IPAddress -notmatch "^127\." } | Select-Object -First 1).IPAddress
+    if ($ipAddr) {
+        Write-Host "     http://$ipAddr`:3000" -ForegroundColor Cyan
+    }
+} catch { }
+
+Write-Host "`n  Press Ctrl+C to stop`n" -ForegroundColor Yellow
 
 & $nodeExe server.js

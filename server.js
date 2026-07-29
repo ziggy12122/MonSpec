@@ -5,15 +5,6 @@ const path = require('path');
 const app = express();
 const PORT = 3000;
 
-// Enable CORS for Netlify frontend
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
-  next();
-});
-
-// Serve frontend from Netlify, or local if available
 app.use(express.static(path.join(__dirname, 'public')));
 
 const DLL_PATH = path.join(__dirname, 'Libre', 'LibreHardwareMonitorLib.dll');

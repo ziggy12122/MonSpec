@@ -2,7 +2,7 @@
 <#
 .SYNOPSIS
     PC Temp Monitor - One-Line Installer from GitHub
-    irm https://raw.githubusercontent.com/YOUR-USERNAME/MonSpec/main/install.ps1 | iex
+    irm https://raw.githubusercontent.com/ziggy12122/MonSpec/main/install.ps1 | iex
 #>
 
 param([switch]$NoAutoElevate)
@@ -10,7 +10,7 @@ param([switch]$NoAutoElevate)
 # Auto-elevate
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     if (-not $NoAutoElevate) {
-        Start-Process pwsh -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"irm https://raw.githubusercontent.com/YOUR-USERNAME/MonSpec/main/install.ps1 | iex`"" -Verb RunAs
+        Start-Process pwsh -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"irm https://raw.githubusercontent.com/ziggy12122/MonSpec/main/install.ps1 | iex`"" -Verb RunAs
         exit 0
     }
 }
@@ -61,7 +61,7 @@ Set-Location $monspecDir
 Write-Host "✓ $monspecDir`n" -ForegroundColor Green
 
 # GitHub base URL
-$gitHub = "https://raw.githubusercontent.com/YOUR-USERNAME/MonSpec/main"
+$gitHub = "https://raw.githubusercontent.com/ziggy12122/MonSpec/main"
 
 # Download backend from GitHub
 Write-Host "[3/5] Downloading backend..." -ForegroundColor Cyan
